@@ -1,0 +1,8 @@
+<launch>
+
+    <arg name="project" default="liorf"/>
+
+    <!--- Run Rviz-->
+    <node pkg="rviz" type="rviz" name="$(arg project)_rviz" args="-d $(find liorf)/launch/include/config/rviz.rviz" />
+
+</launch>
