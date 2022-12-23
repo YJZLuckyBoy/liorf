@@ -54,26 +54,26 @@
 
   6. Mutiple Lidar
   <p align='center'>
-      <img src="https://github.com/YJZLuckyBoy/pic/tree/master/pic/multiple_lidar/multiple_lidar_00.png" alt="drawing" width="400"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/tree/master/pic/multiple_lidar/multiple_lidar_01.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_00.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_01.png" alt="drawing" width="400"/>
   </p>
 
   6. r3live datasets
   <p align='center'>
-      <img src="https://github.com/YJZLuckyBoy/pic/tree/master/pic/r3live/r3live_data_00.png" alt="drawing" width="266"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/tree/master/pic/r3live/r3live_data_01.png" alt="drawing" width="266"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/tree/master/pic/r3live/r3live_data_02.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_00.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_01.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_02.png" alt="drawing" width="266"/>
   </p>
 
 ## Performance
   1. MulRan
   <p align='center'>
-      <img src="./demo/mulran_traj.png" alt="drawing" width="800"/>
+      <img src="./demo/mulran_traj.png" alt="drawing" width="800" height = "400"/>
   </p>
 
   2. Kitti 01
   <p align='center'>
-      <img src="./demo/kitti01_trajec.png" alt="drawing" width="800"/>
+      <img src="./demo/kitti01_trajec.png" alt="drawing" width="800" height = "400"/>
   </p>
   <p align='center'>
       <img src="./demo/kitti01_ape.png"    alt="drawing" width="400"/>
@@ -82,7 +82,7 @@
 
   3. Kitti 05
   <p align='center'>
-      <img src="./demo/kitti05_trajec.png" alt="drawing" width="800"/>
+      <img src="./demo/kitti05_trajec.png" alt="drawing" width="800" height = "400"/>
   </p>
   <p align='center'>
       <img src="./demo/kitti05_ape.png"    alt="drawing" width="400"/>
