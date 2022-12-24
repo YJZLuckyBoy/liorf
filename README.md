@@ -68,7 +68,7 @@ Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://www.bilibili.c
       <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/mulran/mulran_01.png" alt="drawing" width="400"/>
   </p>
 
-  6. Mutiple Lidar
+  6. Multiple Lidar
   <p align='center'>
       <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_00.png" alt="drawing" width="400"/>
       <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_01.png" alt="drawing" width="400"/>
