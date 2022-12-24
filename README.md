@@ -14,6 +14,15 @@
 ------------------- Update Date: 2022-12-13 -------------------
 - Re-derivation the LM optimization, don't need coordinate transformation.
 
+------------------- Update Date: 2022-12-24 -------------------
+- Modified gps factor, no longer depending on the 'robot_localization' package, and make it easier to adapt to different gnss device(RTK/GPS).
+
+- The gps factor is modified to make it easier to adapt to gnss devices with different frequencies(10HZ~500HZ).
+
+Blog：[LIO-SAM：配置环境、安装测试、适配自己采集数据集](https://blog.csdn.net/qq_42938987/article/details/108434290)
+
+Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://www.bilibili.com/medialist/play/327643131?from=space&business=space_series&business_id=2806122&desc=1)
+
 ## Run the package
 
 1. Run the launch file:
@@ -26,11 +35,18 @@
     rosbag play kitti_2011_09_30_drive_0018_synced.bag
   ```
 
+## For fusion gps factor
+- Make sure your gnss topic type is 'sensor_msgs::NavSatFix';
+
+- Modify 'gpsTopic' paramter in '*.yaml' with yourself gnss topic;
+  ```
+    gpsTopic: "gps/fix"    # GPS topic
+  ```
+- If you want to use liorf with integrated gps factor in kitti dataset, you can use the modified python script in "config/doc/kitti2bag" to obtain high-frequency gps data(100HZ), refer to [doc/kitti2bag](https://github.com/TixiaoShan/LIO-SAM/tree/master/config/doc/kitti2bag).
+
+- For more details, please check the demo video: [unknown]()
+
 ## Mapping
-  Blog：[LIO-SAM：配置环境、安装测试、适配自己采集数据集](https://blog.csdn.net/qq_42938987/article/details/108434290)
-
-  Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://www.bilibili.com/medialist/play/327643131?from=space&business=space_series&business_id=2806122&desc=1)
-
   1. lio-sam data
   <p align='center'>
       <img src="./demo/lio_sam_livox_data.gif" alt="drawing" width="800" height = "400"/>

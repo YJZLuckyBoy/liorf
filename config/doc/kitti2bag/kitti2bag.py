@@ -44,7 +44,7 @@ def save_imu_data(bag, kitti, imu_frame_id, topic):
         imu.angular_velocity.z = oxts.packet.wu
         bag.write(topic, imu, t=imu.header.stamp)
 
-def save_imu_data_raw(bag, kitti, imu_frame_id, topic):
+def save_imu_data_raw(bag, kitti, imu_frame_id, topic, gps_correct_topic):
     print("Exporting IMU Raw")
     synced_path = kitti.data_path
     unsynced_path = synced_path.replace('sync', 'extract')
@@ -101,6 +101,16 @@ def save_imu_data_raw(bag, kitti, imu_frame_id, topic):
 
         imu.header.frame_id = 'imu_enu_link'
         bag.write('/imu_correct', imu, t=imu.header.stamp) # for LIO-SAM GPS
+
+        # For GPS 100HZ
+        navsatfix_msg = NavSatFix()
+        navsatfix_msg.header.frame_id = imu_frame_id
+        navsatfix_msg.header.stamp = rospy.Time.from_sec(timestamp)
+        navsatfix_msg.latitude = float(data[0])
+        navsatfix_msg.longitude = float(data[1])
+        navsatfix_msg.altitude = float(data[2])
+        navsatfix_msg.status.service = 1
+        bag.write(gps_correct_topic, navsatfix_msg, t=navsatfix_msg.header.stamp)
 
 def save_dynamic_tf(bag, kitti, kitti_type, initial_time):
     print("Exporting time dependent transformations")
@@ -392,6 +402,7 @@ if __name__ == "__main__":
             imu_topic = '/kitti/oxts/imu'
             imu_raw_topic = '/imu_raw'
             gps_fix_topic = '/gps/fix'
+            gps_fix_correct_topic = '/gps/fix/correct'
             gps_vel_topic = '/gps/vel'
             velo_frame_id = 'velodyne'
             velo_topic = '/points_raw'
@@ -415,7 +426,7 @@ if __name__ == "__main__":
             # save_static_transforms(bag, transforms, kitti.timestamps)
             # save_dynamic_tf(bag, kitti, args.kitti_type, initial_time=None)
             # save_imu_data(bag, kitti, imu_frame_id, imu_topic)
-            save_imu_data_raw(bag, kitti, imu_frame_id, imu_raw_topic)
+            save_imu_data_raw(bag, kitti, imu_frame_id, imu_raw_topic, gps_fix_correct_topic)
             save_gps_fix_data(bag, kitti, imu_frame_id, gps_fix_topic)
             save_gps_vel_data(bag, kitti, imu_frame_id, gps_vel_topic)
             for camera in cameras:

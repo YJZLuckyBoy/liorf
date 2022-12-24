@@ -2,6 +2,7 @@
 #include "liorf/cloud_info.h"
 #include "liorf/save_map.h"
 // <!-- liorf_yjz_lucky_boy -->
+#include <sensor_msgs/NavSatFix.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -16,6 +17,9 @@
 #include <gtsam/inference/Symbol.h>
 
 #include <gtsam/nonlinear/ISAM2.h>
+
+#include <GeographicLib/Geocentric.hpp>
+#include <GeographicLib/LocalCartesian.hpp>
 
 using namespace gtsam;
 
@@ -74,6 +78,7 @@ public:
     ros::Publisher pubLoopConstraintEdge;
 
     ros::Publisher pubSLAMInfo;
+    ros::Publisher pubGpsOdom;
 
     ros::Subscriber subCloud;
     ros::Subscriber subGPS;
@@ -142,6 +147,7 @@ public:
     Eigen::Affine3f incrementalOdometryAffineFront;
     Eigen::Affine3f incrementalOdometryAffineBack;
 
+    GeographicLib::LocalCartesian gps_trans_;
 
     mapOptimization()
     {
@@ -157,7 +163,7 @@ public:
         pubPath                     = nh.advertise<nav_msgs::Path>("liorf/mapping/path", 1);
 
         subCloud = nh.subscribe<liorf::cloud_info>("liorf/deskew/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
-        subGPS   = nh.subscribe<nav_msgs::Odometry> (gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
+        subGPS   = nh.subscribe<sensor_msgs::NavSatFix> (gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
         subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
         srvSaveMap  = nh.advertiseService("liorf/save_map", &mapOptimization::saveMapService, this);
@@ -171,6 +177,7 @@ public:
         pubCloudRegisteredRaw = nh.advertise<sensor_msgs::PointCloud2>("liorf/mapping/cloud_registered_raw", 1);
 
         pubSLAMInfo           = nh.advertise<liorf::cloud_info>("liorf/mapping/slam_info", 1);
+        pubGpsOdom            = nh.advertise<nav_msgs::Odometry> ("liorf/mapping/gps_odom", 1);
 
         downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
         downSizeFilterLocalMapSurf.setLeafSize(surroundingKeyframeMapLeafSize, surroundingKeyframeMapLeafSize, surroundingKeyframeMapLeafSize);
@@ -255,9 +262,29 @@ public:
         }
     }
 
-    void gpsHandler(const nav_msgs::Odometry::ConstPtr& gpsMsg)
+    void gpsHandler(const sensor_msgs::NavSatFixConstPtr& gpsMsg)
     {
-        gpsQueue.push_back(*gpsMsg);
+        if (gpsMsg->status.status != 0)
+            return;
+
+        Eigen::Vector3d trans_local_;
+        static bool first_gps = false;
+        if (!first_gps) {
+            first_gps = true;
+            gps_trans_.Reset(gpsMsg->latitude, gpsMsg->longitude, gpsMsg->altitude);
+        }
+
+        gps_trans_.Forward(gpsMsg->latitude, gpsMsg->longitude, gpsMsg->altitude, trans_local_[0], trans_local_[1], trans_local_[2]);
+
+        nav_msgs::Odometry gps_odom;
+        gps_odom.header = gpsMsg->header;
+        gps_odom.header.frame_id = "map";
+        gps_odom.pose.pose.position.x = trans_local_[0];
+        gps_odom.pose.pose.position.y = trans_local_[1];
+        gps_odom.pose.pose.position.z = trans_local_[2];
+        gps_odom.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, 0.0);
+        pubGpsOdom.publish(gps_odom);
+        gpsQueue.push_back(gps_odom);
     }
 
     void pointAssociateToMap(PointType const * const pi, PointType * const po)

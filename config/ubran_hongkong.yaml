@@ -4,7 +4,7 @@ liorf:
   pointCloudTopic: "/velodyne_points"               # Point cloud data
   imuTopic: "/imu/data"                         # IMU data
   odomTopic: "odometry/imu"                   # IMU pre-preintegration odometry, same frequency as IMU
-  gpsTopic: "odometry/gpsz"                   # GPS odometry topic from navsat, see module_navsat.launch file
+  gpsTopic: "gps/fixz"                   # GPS odometry topic from navsat, see module_navsat.launch file
 
   # Frames
   lidarFrame: "base_link"
@@ -14,7 +14,7 @@ liorf:
 
   # GPS Settings
   useImuHeadingInitialization: true           # if using GPS data, set to "true"
-  useGpsElevation: false                      # if GPS elevation is bad, set to "false"
+  useGpsElevation: true                      # if GPS elevation is bad, set to "false"
   gpsCovThreshold: 2.0                        # m^2, threshold for using GPS data
   poseCovThreshold: 25.0                      # m^2, threshold for using GPS data
   

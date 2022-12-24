@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /links1
         - /Odometry1
+        - /Odometry1/Odom GPS1/Shape1
         - /Point Cloud1
         - /Feature Cloud1
         - /Mapping1
@@ -114,23 +115,23 @@ Visualization Manager:
               Scale: 1
               Value: true
             Value: false
-          Enabled: false
-          Keep: 300
+          Enabled: true
+          Keep: 1000
           Name: Odom GPS
           Position Tolerance: 0.10000000149011612
           Shape:
             Alpha: 1
-            Axes Length: 1
+            Axes Length: 2
             Axes Radius: 0.30000001192092896
-            Color: 255; 25; 0
-            Head Length: 0.30000001192092896
-            Head Radius: 0.10000000149011612
+            Color: 238; 238; 236
+            Head Length: 1
+            Head Radius: 0.5
             Shaft Length: 1
-            Shaft Radius: 0.05000000074505806
+            Shaft Radius: 0.10000000149011612
             Value: Axes
-          Topic: /odometry/gps
+          Topic: /liorf/mapping/gps_odom
           Unreliable: false
-          Value: false
+          Value: true
         - Angle Tolerance: 0.10000000149011612
           Class: rviz/Odometry
           Covariance:
@@ -181,7 +182,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 128
@@ -198,7 +199,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -292,7 +293,7 @@ Visualization Manager:
     - Class: rviz/Group
       Displays:
         - Alpha: 0.30000001192092896
-          Autocompute Intensity Bounds: false
+          Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
             Max Value: 7.4858574867248535
             Min Value: -1.2309398651123047
@@ -303,12 +304,10 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 300
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 128
           Min Color: 0; 0; 0
-          Min Intensity: 0
           Name: Map (cloud)
           Position Transformer: XYZ
           Queue Size: 10
@@ -320,7 +319,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -361,7 +360,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -376,7 +375,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -386,7 +385,7 @@ Visualization Manager:
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
           Line Style: Billboards
-          Line Width: 0.10000000149011612
+          Line Width: 0.30000001192092896
           Name: Path (global)
           Offset:
             X: 0
@@ -404,7 +403,7 @@ Visualization Manager:
           Buffer Length: 1
           Class: rviz/Path
           Color: 255; 85; 255
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -422,7 +421,7 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /liorf/imu/path
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -477,7 +476,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 141.38613891601562
+      Distance: 349.970947265625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -492,10 +491,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2497961521148682
+      Pitch: 1.5697963237762451
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 2.7266716957092285
+      Yaw: 1.1916782855987549
     Saved: ~
 Window Geometry:
   Displays:
@@ -511,5 +510,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1920
-  X: 1920
+  X: 2560
   Y: 0
