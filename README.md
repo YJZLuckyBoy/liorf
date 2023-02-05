@@ -21,7 +21,7 @@
 
 Blog：[LIO-SAM：配置环境、安装测试、适配自己采集数据集](https://blog.csdn.net/qq_42938987/article/details/108434290)
 
-Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://www.bilibili.com/medialist/play/327643131?from=space&business=space_series&business_id=2806122&desc=1)
+Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili.com/327643131/channel/collectiondetail?sid=945184&ctype=0)
 
 ## Run the package
 
@@ -42,9 +42,9 @@ Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://www.bilibili.c
   ```
     gpsTopic: "gps/fix"    # GPS topic
   ```
-- If you want to use liorf with integrated gps factor in kitti dataset, you can use the modified python script in "config/doc/kitti2bag" to obtain high-frequency gps data(100HZ), refer to [doc/kitti2bag](https://github.com/TixiaoShan/LIO-SAM/tree/master/config/doc/kitti2bag).
+- If you want to use liorf with integrated gps factor in kitti dataset, you can use the modified python script in "config/doc/kitti2bag" to obtain high-frequency gps data(Rate: 100HZ, Topic: '/gps/fix/correct'), refer to [doc/kitti2bag](https://github.com/TixiaoShan/LIO-SAM/tree/master/config/doc/kitti2bag).
 
-- For more details, please check the demo video: [unknown]()
+- For more details, please check the demo video: [基于LIO-SAM框架SLAM算法开发（六）：建图之快速适配多雷达及GNSS设备](https://www.bilibili.com/video/BV1ZD4y177ut/?spm_id_from=333.999.0.0&vd_source=fb7f82fee1e57e882c6174174ad2fa11)
 
 ## Mapping
   1. lio-sam data
