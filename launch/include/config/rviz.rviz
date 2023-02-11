@@ -195,7 +195,7 @@ Visualization Manager:
           Size (Pixels): 1.5
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /liorf/deskew/cloud_deskewed
+          Topic: /liorf/mapping/cloud_registered_raw
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -510,5 +510,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1920
-  X: 2560
+  X: 1920
   Y: 0

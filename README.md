@@ -19,6 +19,11 @@
 
 - The gps factor is modified to make it easier to adapt to gnss devices with different frequencies(10HZ~500HZ).
 
+------------------- Update Date: 2023-02-11 -------------------
+- Add scancontext loop closure detection;
+
+- Support M2DGR dataset.
+
 Blog：[LIO-SAM：配置环境、安装测试、适配自己采集数据集](https://blog.csdn.net/qq_42938987/article/details/108434290)
 
 Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili.com/327643131/channel/collectiondetail?sid=945184&ctype=0)
@@ -42,43 +47,48 @@ Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili
   ```
     gpsTopic: "gps/fix"    # GPS topic
   ```
-- If you want to use liorf with integrated gps factor in kitti dataset, you can use the modified python script in "config/doc/kitti2bag" to obtain high-frequency gps data(Rate: 100HZ, Topic: '/gps/fix/correct'), refer to [doc/kitti2bag](https://github.com/TixiaoShan/LIO-SAM/tree/master/config/doc/kitti2bag).
+- If you want to use liorf with integrated gps factor in kitti dataset, you can use the modified python script in "config/doc/kitti2bag" to obtain high-frequency gps data(Rate: 100HZ, Topic: '/gps/fix/correct'). About how to use "kitti2bag.py", please refer to [doc/kitti2bag](https://github.com/TixiaoShan/LIO-SAM/tree/master/config/doc/kitti2bag).
 
 - For more details, please check the demo video: [基于LIO-SAM框架SLAM算法开发（六）：建图之快速适配多雷达及GNSS设备](https://www.bilibili.com/video/BV1ZD4y177ut/?spm_id_from=333.999.0.0&vd_source=fb7f82fee1e57e882c6174174ad2fa11)
 
 ## Mapping
-  1. lio-sam data
+  1. lio-sam dataset
   <p align='center'>
       <img src="./demo/lio_sam_livox_data.gif" alt="drawing" width="800" height = "400"/>
   </p>
 
-  3. kitti data
+  2. M2DGR dataset
+  <p align='center'>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/M2DGR/gate_01.png" alt="drawing" width="800" height = "400"/>
+  </p>
+
+  3. kitti-05 dataset
   <p align='center'>
       <img src="./demo/kitti.gif" alt="drawing" width="800" height = "400"/>
   </p>
 
-  4. ubran_hongkong data
+  4. ubran_hongkong dataset
   <p align='center'>
       <img src="./demo/ubran_hongkong.gif" alt="drawing" width="800" height = "400"/>
   </p>
 
-  5. MulRan
+  5. MulRan dataset
   <p align='center'>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/mulran/mulran_00.png" alt="drawing" width="400"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/mulran/mulran_01.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/mulran/mulran_00.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/mulran/mulran_01.png" alt="drawing" width="400"/>
   </p>
 
   6. Multiple Lidar
   <p align='center'>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_00.png" alt="drawing" width="400"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/multiple_lidar/multiple_lidar_01.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/multiple_lidar/multiple_lidar_00.png" alt="drawing" width="400"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/multiple_lidar/multiple_lidar_01.png" alt="drawing" width="400"/>
   </p>
 
-  6. r3live datasets
+  6. r3live dataset
   <p align='center'>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_00.png" alt="drawing" width="266"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_01.png" alt="drawing" width="266"/>
-      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/pic/r3live/r3live_data_02.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/r3live/r3live_data_00.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/r3live/r3live_data_01.png" alt="drawing" width="266"/>
+      <img src="https://github.com/YJZLuckyBoy/pic/blob/master/liorf/r3live/r3live_data_02.png" alt="drawing" width="266"/>
   </p>
 
 ## Performance
@@ -106,7 +116,7 @@ Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili
   </p>
 
 ## Acknowledgments
-  Thanks for [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM), [FAST_LIO2](https://github.com/hku-mars/FAST_LIO) and [UrbanNavDataset](https://github.com/weisongwen/UrbanNavDataset) and [MulRanDataset](https://sites.google.com/view/mulran-pr/?pli=1).
+  Thanks for [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM), [FAST_LIO2](https://github.com/hku-mars/FAST_LIO), [UrbanNavDataset](https://github.com/weisongwen/UrbanNavDataset), [M2DGR](https://github.com/SJTU-ViSYS/M2DGR) and [MulRanDataset](https://sites.google.com/view/mulran-pr/?pli=1).
 
 # LIO-SAM
 

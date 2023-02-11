@@ -21,6 +21,8 @@
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
 
+#include "Scancontext.h"
+
 using namespace gtsam;
 
 using symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
@@ -50,6 +52,12 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 
 typedef PointXYZIRPYT  PointTypePose;
 
+enum class SCInputType 
+{ 
+    SINGLE_SCAN_FULL, 
+    SINGLE_SCAN_FEAT, 
+    MULTI_SCAN_FEAT 
+}; 
 
 class mapOptimization : public ParamServer
 {
@@ -138,7 +146,8 @@ public:
     map<int, int> loopIndexContainer; // from new to old
     vector<pair<int, int>> loopIndexQueue;
     vector<gtsam::Pose3> loopPoseQueue;
-    vector<gtsam::noiseModel::Diagonal::shared_ptr> loopNoiseQueue;
+    // vector<gtsam::noiseModel::Diagonal::shared_ptr> loopNoiseQueue;
+    vector<gtsam::SharedNoiseModel> loopNoiseQueue;
     deque<std_msgs::Float64MultiArray> loopInfoVec;
 
     nav_msgs::Path globalPath;
@@ -148,6 +157,9 @@ public:
     Eigen::Affine3f incrementalOdometryAffineBack;
 
     GeographicLib::LocalCartesian gps_trans_;
+
+    // scancontext loop closure
+    SCManager scManager;
 
     mapOptimization()
     {
@@ -509,7 +521,8 @@ public:
         while (ros::ok())
         {
             rate.sleep();
-            performLoopClosure();
+            performRSLoopClosure();
+            performSCLoopClosure();
             visualizeLoopClosure();
         }
     }
@@ -526,7 +539,7 @@ public:
             loopInfoVec.pop_front();
     }
 
-    void performLoopClosure()
+    void performRSLoopClosure()
     {
         if (cloudKeyPoses3D->points.empty() == true)
             return;
@@ -547,8 +560,8 @@ public:
         pcl::PointCloud<PointType>::Ptr cureKeyframeCloud(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr prevKeyframeCloud(new pcl::PointCloud<PointType>());
         {
-            loopFindNearKeyframes(cureKeyframeCloud, loopKeyCur, 0);
-            loopFindNearKeyframes(prevKeyframeCloud, loopKeyPre, historyKeyframeSearchNum);
+            loopFindNearKeyframes(cureKeyframeCloud, loopKeyCur, 0, -1);
+            loopFindNearKeyframes(prevKeyframeCloud, loopKeyPre, historyKeyframeSearchNum, -1);
             if (cureKeyframeCloud->size() < 300 || prevKeyframeCloud->size() < 1000)
                 return;
             if (pubHistoryKeyFrames.getNumSubscribers() != 0)
@@ -556,7 +569,7 @@ public:
         }
 
         // ICP Settings
-        static pcl::IterativeClosestPoint<PointType, PointType> icp;
+        pcl::IterativeClosestPoint<PointType, PointType> icp;
         icp.setMaxCorrespondenceDistance(historyKeyframeSearchRadius*2);
         icp.setMaximumIterations(100);
         icp.setTransformationEpsilon(1e-6);
@@ -601,6 +614,115 @@ public:
         loopIndexQueue.push_back(make_pair(loopKeyCur, loopKeyPre));
         loopPoseQueue.push_back(poseFrom.between(poseTo));
         loopNoiseQueue.push_back(constraintNoise);
+        mtx.unlock();
+
+        // add loop constriant
+        loopIndexContainer[loopKeyCur] = loopKeyPre;
+    }
+
+    // copy from sc-lio-sam
+    void performSCLoopClosure()
+    {
+        if (cloudKeyPoses3D->points.empty() == true)
+            return;
+
+        mtx.lock();
+        *copy_cloudKeyPoses3D = *cloudKeyPoses3D;
+        *copy_cloudKeyPoses6D = *cloudKeyPoses6D;
+        mtx.unlock();
+
+        // find keys
+        // first: nn index, second: yaw diff 
+        auto detectResult = scManager.detectLoopClosureID(); 
+        int loopKeyCur    = copy_cloudKeyPoses3D->size() - 1;;
+        int loopKeyPre    = detectResult.first;
+        float yawDiffRad  = detectResult.second; // not use for v1 (because pcl icp withi initial somthing wrong...)
+        if( loopKeyPre == -1)
+            return;
+
+        auto it = loopIndexContainer.find(loopKeyCur);
+        if (it != loopIndexContainer.end())
+            return;
+
+        // std::cout << "SC loop found! between " << loopKeyCur << " and " << loopKeyPre << "." << std::endl; // giseop
+
+        // extract cloud
+        pcl::PointCloud<PointType>::Ptr cureKeyframeCloud(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr prevKeyframeCloud(new pcl::PointCloud<PointType>());
+        {
+            int base_key = 0;
+            loopFindNearKeyframes(cureKeyframeCloud, loopKeyCur, 0, base_key); // giseop 
+            loopFindNearKeyframes(prevKeyframeCloud, loopKeyPre, historyKeyframeSearchNum, base_key); // giseop 
+
+            if (cureKeyframeCloud->size() < 300 || prevKeyframeCloud->size() < 1000)
+                return;
+            if (pubHistoryKeyFrames.getNumSubscribers() != 0)
+                publishCloud(pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp, odometryFrame);
+        }
+
+        // ICP Settings
+        pcl::IterativeClosestPoint<PointType, PointType> icp;
+        icp.setMaxCorrespondenceDistance(historyKeyframeSearchRadius*2);
+        icp.setMaximumIterations(100);
+        icp.setTransformationEpsilon(1e-6);
+        icp.setEuclideanFitnessEpsilon(1e-6);
+        icp.setRANSACIterations(0);
+
+        // Align clouds
+        icp.setInputSource(cureKeyframeCloud);
+        icp.setInputTarget(prevKeyframeCloud);
+        pcl::PointCloud<PointType>::Ptr unused_result(new pcl::PointCloud<PointType>());
+        icp.align(*unused_result);
+
+        if (icp.hasConverged() == false || icp.getFitnessScore() > historyKeyframeFitnessScore)
+            return;
+
+        // publish corrected cloud
+        if (pubIcpKeyFrames.getNumSubscribers() != 0)
+        {
+            pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
+            pcl::transformPointCloud(*cureKeyframeCloud, *closed_cloud, icp.getFinalTransformation());
+            publishCloud(pubIcpKeyFrames, closed_cloud, timeLaserInfoStamp, odometryFrame);
+        }
+
+        // Get pose transformation
+        float x, y, z, roll, pitch, yaw;
+        Eigen::Affine3f correctionLidarFrame;
+        correctionLidarFrame = icp.getFinalTransformation();
+
+        // // transform from world origin to wrong pose
+        // Eigen::Affine3f tWrong = pclPointToAffine3f(copy_cloudKeyPoses6D->points[loopKeyCur]);
+        // // transform from world origin to corrected pose
+        // Eigen::Affine3f tCorrect = correctionLidarFrame * tWrong;// pre-multiplying -> successive rotation about a fixed frame
+        // pcl::getTranslationAndEulerAngles (tCorrect, x, y, z, roll, pitch, yaw);
+        // gtsam::Pose3 poseFrom = Pose3(Rot3::RzRyRx(roll, pitch, yaw), Point3(x, y, z));
+        // gtsam::Pose3 poseTo = pclPointTogtsamPose3(copy_cloudKeyPoses6D->points[loopKeyPre]);
+
+        // gtsam::Vector Vector6(6);
+        // float noiseScore = icp.getFitnessScore();
+        // Vector6 << noiseScore, noiseScore, noiseScore, noiseScore, noiseScore, noiseScore;
+        // noiseModel::Diagonal::shared_ptr constraintNoise = noiseModel::Diagonal::Variances(Vector6);
+
+        // giseop 
+        pcl::getTranslationAndEulerAngles (correctionLidarFrame, x, y, z, roll, pitch, yaw);
+        gtsam::Pose3 poseFrom = Pose3(Rot3::RzRyRx(roll, pitch, yaw), Point3(x, y, z));
+        gtsam::Pose3 poseTo = Pose3(Rot3::RzRyRx(0.0, 0.0, 0.0), Point3(0.0, 0.0, 0.0));
+
+        // giseop, robust kernel for a SC loop
+        float robustNoiseScore = 0.5; // constant is ok...
+        gtsam::Vector robustNoiseVector6(6); 
+        robustNoiseVector6 << robustNoiseScore, robustNoiseScore, robustNoiseScore, robustNoiseScore, robustNoiseScore, robustNoiseScore;
+        noiseModel::Base::shared_ptr robustConstraintNoise; 
+        robustConstraintNoise = gtsam::noiseModel::Robust::Create(
+            gtsam::noiseModel::mEstimator::Cauchy::Create(1), // optional: replacing Cauchy by DCS or GemanMcClure, but with a good front-end loop detector, Cauchy is empirically enough.
+            gtsam::noiseModel::Diagonal::Variances(robustNoiseVector6)
+        ); // - checked it works. but with robust kernel, map modification may be delayed (i.e,. requires more true-positive loop factors)
+
+        // Add pose constraint
+        mtx.lock();
+        loopIndexQueue.push_back(make_pair(loopKeyCur, loopKeyPre));
+        loopPoseQueue.push_back(poseFrom.between(poseTo));
+        loopNoiseQueue.push_back(robustConstraintNoise);
         mtx.unlock();
 
         // add loop constriant
@@ -696,7 +818,7 @@ public:
         return true;
     }
 
-    void loopFindNearKeyframes(pcl::PointCloud<PointType>::Ptr& nearKeyframes, const int& key, const int& searchNum)
+    void loopFindNearKeyframes(pcl::PointCloud<PointType>::Ptr& nearKeyframes, const int& key, const int& searchNum, const int& loop_index)
     {
         // extract near keyframes
         nearKeyframes->clear();
@@ -706,7 +828,9 @@ public:
             int keyNear = key + i;
             if (keyNear < 0 || keyNear >= cloudSize )
                 continue;
-            *nearKeyframes += *transformPointCloud(surfCloudKeyFrames[keyNear],   &copy_cloudKeyPoses6D->points[keyNear]);
+
+            int select_loop_index = (loop_index != -1) ? loop_index : key + i;
+            *nearKeyframes += *transformPointCloud(surfCloudKeyFrames[keyNear],   &copy_cloudKeyPoses6D->points[select_loop_index]);
         }
 
         if (nearKeyframes->empty())
@@ -1365,7 +1489,8 @@ public:
             int indexFrom = loopIndexQueue[i].first;
             int indexTo = loopIndexQueue[i].second;
             gtsam::Pose3 poseBetween = loopPoseQueue[i];
-            gtsam::noiseModel::Diagonal::shared_ptr noiseBetween = loopNoiseQueue[i];
+            // gtsam::noiseModel::Diagonal::shared_ptr noiseBetween = loopNoiseQueue[i];
+            auto noiseBetween = loopNoiseQueue[i];
             gtSAMgraph.add(BetweenFactor<Pose3>(indexFrom, indexTo, poseBetween, noiseBetween));
         }
 
@@ -1453,6 +1578,31 @@ public:
 
         // save key frame cloud
         surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+
+        // The following code is copy from sc-lio-sam
+        // Scan Context loop detector - giseop
+        // - SINGLE_SCAN_FULL: using downsampled original point cloud (/full_cloud_projected + downsampling)
+        // - SINGLE_SCAN_FEAT: using surface feature as an input point cloud for scan context (2020.04.01: checked it works.)
+        // - MULTI_SCAN_FEAT: using NearKeyframes (because a MulRan scan does not have beyond region, so to solve this issue ... )
+        const SCInputType sc_input_type = SCInputType::SINGLE_SCAN_FULL; // change this 
+
+        if( sc_input_type == SCInputType::SINGLE_SCAN_FULL )
+        {
+            pcl::PointCloud<PointType>::Ptr thisRawCloudKeyFrame(new pcl::PointCloud<PointType>());
+            pcl::fromROSMsg(cloudInfo.cloud_deskewed, *thisRawCloudKeyFrame);
+
+            scManager.makeAndSaveScancontextAndKeys(*thisRawCloudKeyFrame);
+        }  
+        else if (sc_input_type == SCInputType::SINGLE_SCAN_FEAT)
+        { 
+            scManager.makeAndSaveScancontextAndKeys(*thisSurfKeyFrame); 
+        }
+        else if (sc_input_type == SCInputType::MULTI_SCAN_FEAT)
+        { 
+            pcl::PointCloud<PointType>::Ptr multiKeyFrameFeatureCloud(new pcl::PointCloud<PointType>());
+            loopFindNearKeyframes(multiKeyFrameFeatureCloud, cloudKeyPoses6D->size() - 1, historyKeyframeSearchNum, -1);
+            scManager.makeAndSaveScancontextAndKeys(*multiKeyFrameFeatureCloud); 
+        }
 
         // save path for visualization
         updatePath(thisPose6D);
