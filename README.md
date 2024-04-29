@@ -24,18 +24,43 @@
 
 - Support M2DGR dataset.
 
+------------------- Update Date: 2024-04-29 -------------------
+
+- Add [Liorf ROS2](https://github.com/YJZLuckyBoy/liorf/tree/liorf-ros2) version (Foxy、Galactic).
+
 Blog：[LIO-SAM：配置环境、安装测试、适配自己采集数据集](https://blog.csdn.net/qq_42938987/article/details/108434290)
 
 Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili.com/327643131/channel/collectiondetail?sid=945184&ctype=0)
 
+## Dependency
+- [gtsam](https://gtsam.org/get_started/)(Georgia Tech Smoothing and Mapping library)
+  ```
+    sudo add-apt-repository ppa:borglab/gtsam-release-4.0
+    sudo apt install libgtsam-dev libgtsam-unstable-dev
+  ```
+- Others
+  ```
+    sudo apt install libgeographic-dev
+  ```
+
+## Install
+1. Use the following commands to download and compile the package. (The available ROS2 implementation see branch  [liorf-ros2](https://github.com/YJZLuckyBoy/liorf/tree/liorf-ros2))
+  ```
+    mkdir -p ~/liorf/src && cd ~/liorf/src
+    git clone https://github.com/YJZLuckyBoy/liorf
+    cd ..
+    catkin_make
+  ```
+
 ## Run the package
 
-1. Run the launch file:
+1. Run the launch file
   ```
+    source devel/setup.bash
     roslaunch liorf run_kitti.launch
   ```
 
-2. Play existing bag files:
+2. Play existing bag files
   ```
     rosbag play kitti_2011_09_30_drive_0018_synced.bag
   ```
