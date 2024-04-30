@@ -47,7 +47,7 @@ Video：[基于LIO-SAM框架SLAM算法开发系列视频](https://space.bilibili
 1. Use the following commands to download and compile the package. (The available ROS2 implementation see branch  [liorf-ros2](https://github.com/YJZLuckyBoy/liorf/tree/liorf-ros2))
   ```
     mkdir -p ~/liorf/src && cd ~/liorf/src
-    git clone https://github.com/YJZLuckyBoy/liorf
+    git clone https://github.com/YJZLuckyBoy/liorf.git
     cd ..
     catkin_make
   ```
