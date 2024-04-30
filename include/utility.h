@@ -3,18 +3,19 @@
 #define _UTILITY_LIDAR_ODOMETRY_H_
 #define PCL_NO_PRECOMPILE 
 // <!-- liorf_yjz_lucky_boy -->
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
-#include <std_msgs/Header.h>
-#include <std_msgs/Float64MultiArray.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
+#include <std_msgs/msg/header.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <common_lib.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -33,10 +34,11 @@
 #include <opencv2/opencv.hpp>
 // #include <opencv/cv.h>
 
-#include <tf/LinearMath/Quaternion.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
  
 #include <vector>
 #include <cmath>
@@ -65,11 +67,11 @@ std::shared_ptr<CommonLib::common_lib> common_lib_;
 
 enum class SensorType { VELODYNE, OUSTER, LIVOX, ROBOSENSE, MULRAN};
 
-class ParamServer
+class ParamServer : public rclcpp::Node
 {
 public:
-
-    ros::NodeHandle nh;
+    string history_policy;
+    string reliability_policy;
 
     std::string robot_id;
 
@@ -153,30 +155,48 @@ public:
     float globalMapVisualizationPoseDensity;
     float globalMapVisualizationLeafSize;
 
-    ParamServer()
-    {
-        nh.param<std::string>("/robot_id", robot_id, "roboat");
+    ParamServer(std::string node_name, const rclcpp::NodeOptions & options) : Node(node_name, options)
+    {   
+        declare_parameter<string>("history_policy", "history_keep_last");
+        get_parameter("history_policy", history_policy);
+        declare_parameter<string>("reliability_policy", "reliability_reliable");
+        get_parameter("reliability_policy", reliability_policy);
 
-        nh.param<std::string>("liorf/pointCloudTopic", pointCloudTopic, "points_raw");
-        nh.param<std::string>("liorf/imuTopic", imuTopic, "imu_correct");
-        nh.param<std::string>("liorf/odomTopic", odomTopic, "odometry/imu");
-        nh.param<std::string>("liorf/gpsTopic", gpsTopic, "odometry/gps");
+        declare_parameter<string>("pointCloudTopic", "/points_raw");
+        get_parameter("pointCloudTopic", pointCloudTopic);
+        declare_parameter<string>("imuTopic", "/imu_correct");
+        get_parameter("imuTopic", imuTopic);
+        declare_parameter<string>("odomTopic", "/odometry/imu");
+        get_parameter("odomTopic", odomTopic);
+        declare_parameter<string>("gpsTopic", "/odometry/gps");
+        get_parameter("gpsTopic", gpsTopic);
 
-        nh.param<std::string>("liorf/lidarFrame", lidarFrame, "base_link");
-        nh.param<std::string>("liorf/baselinkFrame", baselinkFrame, "base_link");
-        nh.param<std::string>("liorf/odometryFrame", odometryFrame, "odom");
-        nh.param<std::string>("liorf/mapFrame", mapFrame, "map");
+        declare_parameter<string>("lidarFrame", "base_link");
+        get_parameter("lidarFrame", lidarFrame);
+        declare_parameter<string>("baselinkFrame", "base_link");
+        get_parameter("baselinkFrame", baselinkFrame);
+        declare_parameter<string>("odometryFrame", "odom");
+        get_parameter("odometryFrame", odometryFrame);
+        declare_parameter<string>("mapFrame", "map");
+        get_parameter("mapFrame", mapFrame);
 
-        nh.param<bool>("liorf/useImuHeadingInitialization", useImuHeadingInitialization, false);
-        nh.param<bool>("liorf/useGpsElevation", useGpsElevation, false);
-        nh.param<float>("liorf/gpsCovThreshold", gpsCovThreshold, 2.0);
-        nh.param<float>("liorf/poseCovThreshold", poseCovThreshold, 25.0);
+        declare_parameter<bool>("useImuHeadingInitialization", false);
+        get_parameter("useImuHeadingInitialization", useImuHeadingInitialization);
+        declare_parameter<bool>("useGpsElevation", false);
+        get_parameter("useGpsElevation", useGpsElevation);
+        declare_parameter<float>("gpsCovThreshold", 2.0f);
+        get_parameter("gpsCovThreshold", gpsCovThreshold);
+        declare_parameter<float>("poseCovThreshold", 25.0f);
+        get_parameter("poseCovThreshold", poseCovThreshold);
 
-        nh.param<bool>("liorf/savePCD", savePCD, false);
-        nh.param<std::string>("liorf/savePCDDirectory", savePCDDirectory, "/Downloads/LOAM/");
+        declare_parameter<bool>("savePCD", false);
+        get_parameter("savePCD", savePCD);
+        declare_parameter<string>("savePCDDirectory", "/Downloads/LOAM/");
+        get_parameter("savePCDDirectory", savePCDDirectory);
 
         std::string sensorStr;
-        nh.param<std::string>("liorf/sensor", sensorStr, "");
+        declare_parameter<string>("sensor", " ");
+        get_parameter("sensor", sensorStr);
         if (sensorStr == "velodyne")
         {
             sensor = SensorType::VELODYNE;
@@ -196,67 +216,114 @@ public:
             sensor = SensorType::MULRAN;
         } 
         else {
-            ROS_ERROR_STREAM(
+            RCLCPP_ERROR_STREAM(
+                get_logger(),
                 "Invalid sensor type (must be either 'velodyne' or 'ouster' or 'livox' or 'robosense' or 'mulran'): " << sensorStr);
-            ros::shutdown();
+            rclcpp::shutdown();
         }
 
-        nh.param<int>("liorf/N_SCAN", N_SCAN, 16);
-        nh.param<int>("liorf/Horizon_SCAN", Horizon_SCAN, 1800);
-        nh.param<int>("liorf/downsampleRate", downsampleRate, 1);
-        nh.param<int>("liorf/point_filter_num", point_filter_num, 3);
-        nh.param<float>("liorf/lidarMinRange", lidarMinRange, 1.0);
-        nh.param<float>("liorf/lidarMaxRange", lidarMaxRange, 1000.0);
+        declare_parameter<int>("N_SCAN", 16);
+        get_parameter("N_SCAN", N_SCAN);
+        declare_parameter<int>("Horizon_SCAN", 1800);
+        get_parameter("Horizon_SCAN", Horizon_SCAN);
+        declare_parameter<int>("downsampleRate", 1);
+        get_parameter("downsampleRate", downsampleRate);
+        declare_parameter<int>("point_filter_num", 3);
+        get_parameter("point_filter_num", point_filter_num);
+        declare_parameter<float>("lidarMinRange", 1.0f);
+        get_parameter("lidarMinRange", lidarMinRange);
+        declare_parameter<float>("lidarMaxRange", 1000.0f);
+        get_parameter("lidarMaxRange", lidarMaxRange);
 
-        nh.param<int>("liorf/imuType", imuType, 0);
-        nh.param<float>("liorf/imuRate", imuRate, 500.0);
-        nh.param<float>("liorf/imuAccNoise", imuAccNoise, 0.01);
-        nh.param<float>("liorf/imuGyrNoise", imuGyrNoise, 0.001);
-        nh.param<float>("liorf/imuAccBiasN", imuAccBiasN, 0.0002);
-        nh.param<float>("liorf/imuGyrBiasN", imuGyrBiasN, 0.00003);
-        nh.param<float>("liorf/imuGravity", imuGravity, 9.80511);
-        nh.param<float>("liorf/imuRPYWeight", imuRPYWeight, 0.01);
-        nh.param<vector<double>>("liorf/extrinsicRot", extRotV, vector<double>());
-        nh.param<vector<double>>("liorf/extrinsicRPY", extRPYV, vector<double>());
-        nh.param<vector<double>>("liorf/extrinsicTrans", extTransV, vector<double>());
+        declare_parameter<int>("imuType", 0);
+        get_parameter("imuType", imuType);
+        declare_parameter<float>("imuRate", 500.0f);
+        get_parameter("imuRate", imuRate);
+        declare_parameter<float>("imuAccNoise", 0.01f);
+        get_parameter("imuAccNoise", imuAccNoise);
+        declare_parameter<float>("imuGyrNoise", 0.001f);
+        get_parameter("imuGyrNoise", imuGyrNoise);
+        declare_parameter<float>("imuAccBiasN", 0.0002f);
+        get_parameter("imuAccBiasN", imuAccBiasN);
+        declare_parameter<float>("imuGyrBiasN", 0.00003f);
+        get_parameter("imuGyrBiasN", imuGyrBiasN);
+        declare_parameter<float>("imuGravity", 9.80511f);
+        get_parameter("imuGravity", imuGravity);
+        declare_parameter<float>("imuRPYWeight", 0.01f);
+        get_parameter("imuRPYWeight", imuRPYWeight);
+
+        double ida[] = { 1.0,  0.0,  0.0,
+                         0.0,  1.0,  0.0,
+                         0.0,  0.0,  1.0};
+        std::vector < double > id(ida, std::end(ida));
+        declare_parameter("extrinsicRot", id);
+        get_parameter("extrinsicRot", extRotV);
+        declare_parameter("extrinsicRPY", id);
+        get_parameter("extrinsicRPY", extRPYV);
+        double zea[] = {0.0, 0.0, 0.0};
+        std::vector < double > ze(zea, std::end(zea));
+        declare_parameter("extrinsicTrans", ze);
+        get_parameter("extrinsicTrans", extTransV);
+
         extRot = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRotV.data(), 3, 3);
         extRPY = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRPYV.data(), 3, 3);
         extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
         extQRPY = Eigen::Quaterniond(extRPY).inverse();
 
-        nh.param<float>("liorf/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
-        nh.param<float>("liorf/surroundingKeyframeMapLeafSize", surroundingKeyframeMapLeafSize, 0.2);
+        declare_parameter<float>("mappingSurfLeafSize", 0.2f);
+        get_parameter("mappingSurfLeafSize", mappingSurfLeafSize);
+        declare_parameter<float>("surroundingKeyframeMapLeafSize", 0.2f);
+        get_parameter("surroundingKeyframeMapLeafSize", surroundingKeyframeMapLeafSize);
+        declare_parameter<float>("z_tollerance", 1000.0f);
+        get_parameter("z_tollerance", z_tollerance);
+        declare_parameter<float>("rotation_tollerance", 1000.0f);
+        get_parameter("rotation_tollerance", rotation_tollerance);
 
-        nh.param<float>("liorf/z_tollerance", z_tollerance, FLT_MAX);
-        nh.param<float>("liorf/rotation_tollerance", rotation_tollerance, FLT_MAX);
+        declare_parameter<int>("numberOfCores", 2);
+        get_parameter("numberOfCores", numberOfCores);
+        declare_parameter<double>("mappingProcessInterval", 0.15f);
+        get_parameter("mappingProcessInterval", mappingProcessInterval);
 
-        nh.param<int>("liorf/numberOfCores", numberOfCores, 2);
-        nh.param<double>("liorf/mappingProcessInterval", mappingProcessInterval, 0.15);
+        declare_parameter<float>("surroundingkeyframeAddingDistThreshold", 1.0f);
+        get_parameter("surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold);
+        declare_parameter<float>("surroundingkeyframeAddingAngleThreshold", 0.2f);
+        get_parameter("surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold);
+        declare_parameter<float>("surroundingKeyframeDensity", 1.0f);
+        get_parameter("surroundingKeyframeDensity", surroundingKeyframeDensity);
+        declare_parameter<float>("loopClosureICPSurfLeafSize", 0.3f);
+        get_parameter("loopClosureICPSurfLeafSize", loopClosureICPSurfLeafSize);
+        declare_parameter<float>("surroundingKeyframeSearchRadius", 50.0f);
+        get_parameter("surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius);
 
-        nh.param<float>("liorf/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
-        nh.param<float>("liorf/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
-        nh.param<float>("liorf/surroundingKeyframeDensity", surroundingKeyframeDensity, 1.0);
-        nh.param<float>("liorf/loopClosureICPSurfLeafSize", loopClosureICPSurfLeafSize, 0.3);
-        nh.param<float>("liorf/surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius, 50.0);
+        declare_parameter<bool>("loopClosureEnableFlag", false);
+        get_parameter("loopClosureEnableFlag", loopClosureEnableFlag);
+        declare_parameter<float>("loopClosureFrequency", 1.0f);
+        get_parameter("loopClosureFrequency", loopClosureFrequency);
+        declare_parameter<int>("surroundingKeyframeSize", 50);
+        get_parameter("surroundingKeyframeSize", surroundingKeyframeSize);
+        declare_parameter<float>("historyKeyframeSearchRadius", 10.0f);
+        get_parameter("historyKeyframeSearchRadius", historyKeyframeSearchRadius);
+        declare_parameter<float>("historyKeyframeSearchTimeDiff", 30.0f);
+        get_parameter("historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff);
+        declare_parameter<int>("historyKeyframeSearchNum", 25);
+        get_parameter("historyKeyframeSearchNum", historyKeyframeSearchNum);
+        declare_parameter<float>("historyKeyframeFitnessScore", 0.3f);
+        get_parameter("historyKeyframeFitnessScore", historyKeyframeFitnessScore);
 
-        nh.param<bool>("liorf/loopClosureEnableFlag", loopClosureEnableFlag, false);
-        nh.param<float>("liorf/loopClosureFrequency", loopClosureFrequency, 1.0);
-        nh.param<int>("liorf/surroundingKeyframeSize", surroundingKeyframeSize, 50);
-        nh.param<float>("liorf/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
-        nh.param<float>("liorf/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
-        nh.param<int>("liorf/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
-        nh.param<float>("liorf/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
 
-        nh.param<float>("liorf/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
-        nh.param<float>("liorf/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
-        nh.param<float>("liorf/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
+       declare_parameter<float>("globalMapVisualizationSearchRadius", 1e3f);
+        get_parameter("globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius);
+        declare_parameter<float>("globalMapVisualizationPoseDensity", 10.0);
+        get_parameter("globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity);
+        declare_parameter<float>("globalMapVisualizationLeafSize", 1.0f);
+        get_parameter("globalMapVisualizationLeafSize", globalMapVisualizationLeafSize);
 
         usleep(100);
     }
 
-    sensor_msgs::Imu imuConverter(const sensor_msgs::Imu& imu_in)
+    sensor_msgs::msg::Imu imuConverter(const sensor_msgs::msg::Imu& imu_in)
     {
-        sensor_msgs::Imu imu_out = imu_in;
+        sensor_msgs::msg::Imu imu_out = imu_in;
         // rotate acceleration
         Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
         acc = extRot * acc;
@@ -281,8 +348,8 @@ public:
 
             if (sqrt(q_final.x()*q_final.x() + q_final.y()*q_final.y() + q_final.z()*q_final.z() + q_final.w()*q_final.w()) < 0.1)
             {
-                ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
-                ros::shutdown();
+                RCLCPP_ERROR(get_logger(), "Invalid quaternion, please use a 9-axis IMU!");
+                rclcpp::shutdown();
             }
         }
 
@@ -291,26 +358,27 @@ public:
 };
 
 template<typename T>
-sensor_msgs::PointCloud2 publishCloud(const ros::Publisher& thisPub, const T& thisCloud, ros::Time thisStamp, std::string thisFrame)
+sensor_msgs::msg::PointCloud2 publishCloud(const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr &thisPub, const T& thisCloud, rclcpp::Time thisStamp, std::string thisFrame)
 {
-    sensor_msgs::PointCloud2 tempCloud;
+    sensor_msgs::msg::PointCloud2 tempCloud;
     pcl::toROSMsg(*thisCloud, tempCloud);
     tempCloud.header.stamp = thisStamp;
     tempCloud.header.frame_id = thisFrame;
-    if (thisPub.getNumSubscribers() != 0)
-        thisPub.publish(tempCloud);
+    if (thisPub->get_subscription_count() != 0)
+        thisPub->publish(tempCloud);
+
     return tempCloud;
 }
 
 template<typename T>
 double ROS_TIME(T msg)
 {
-    return msg->header.stamp.toSec();
+    return rclcpp::Time(msg).seconds();
 }
 
 
 template<typename T>
-void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
+void imuAngular2rosAngular(sensor_msgs::msg::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
 {
     *angular_x = thisImuMsg->angular_velocity.x;
     *angular_y = thisImuMsg->angular_velocity.y;
@@ -319,7 +387,7 @@ void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x, T *angula
 
 
 template<typename T>
-void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
+void imuAccel2rosAccel(sensor_msgs::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
 {
     *acc_x = thisImuMsg->linear_acceleration.x;
     *acc_y = thisImuMsg->linear_acceleration.y;
@@ -328,16 +396,41 @@ void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_
 
 
 template<typename T>
-void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
+void imuRPY2rosRPY(sensor_msgs::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
 {
     double imuRoll, imuPitch, imuYaw;
-    tf::Quaternion orientation;
-    tf::quaternionMsgToTF(thisImuMsg->orientation, orientation);
-    tf::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
+    tf2::Quaternion orientation;
+    tf2::fromMsg(thisImuMsg->orientation, orientation);
+    tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
 
     *rosRoll = imuRoll;
     *rosPitch = imuPitch;
     *rosYaw = imuYaw;
+}
+
+rclcpp::QoS QosPolicy(const string &history_policy, const string &reliability_policy)
+{
+    rmw_qos_profile_t qos_profile;
+    if (history_policy == "history_keep_last")
+        qos_profile.history = rmw_qos_history_policy_t::RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+    else if (history_policy == "history_keep_all")
+        qos_profile.history = rmw_qos_history_policy_t::RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+
+    if (reliability_policy == "reliability_reliable")
+        qos_profile.reliability = rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+    else if (reliability_policy == "reliability_best_effort")
+        qos_profile.reliability = rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+
+    qos_profile.depth = 2000;
+
+    qos_profile.durability = rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE;
+    qos_profile.deadline = RMW_QOS_DEADLINE_DEFAULT;
+    qos_profile.lifespan = RMW_QOS_LIFESPAN_DEFAULT;
+    qos_profile.liveliness = rmw_qos_liveliness_policy_t::RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT;
+    qos_profile.liveliness_lease_duration = RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT;
+    qos_profile.avoid_ros_namespace_conventions = false;
+
+    return rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, qos_profile.depth), qos_profile);
 }
 
 #endif
