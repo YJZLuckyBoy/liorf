@@ -1,75 +1,52 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(liorf)
 
 set(CMAKE_BUILD_TYPE "Release")
-# set(CMAKE_CXX_FLAGS "-std=c++11")
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g -pthread")
 
-find_package(catkin REQUIRED COMPONENTS
-  tf
-  roscpp
-  rospy
-  cv_bridge
-  # pcl library
-  pcl_conversions
-  # msgs
-  std_msgs
-  sensor_msgs
-  geometry_msgs
-  nav_msgs
-  message_generation
-  visualization_msgs
-)
+include(cmake/rosidl_get_typesupport_target.cmake)
 
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(pcl_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
+find_package(GTSAM REQUIRED)
+find_package(Eigen REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(PCL REQUIRED QUIET)
-find_package(OpenCV REQUIRED QUIET)
-find_package(GTSAM REQUIRED QUIET)
 find_package(Boost REQUIRED COMPONENTS timer)
+
+set(ros2_lib "rclcpp;rclpy;std_msgs;sensor_msgs;geometry_msgs;nav_msgs;cv_bridge;pcl_msgs;pcl_conversions;visualization_msgs;tf2;tf2_ros;tf2_eigen;tf2_sensor_msgs;tf2_geometry_msgs")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
 find_package(GeographicLib REQUIRED)
 
-add_message_files(
-  DIRECTORY msg
-  FILES
-  cloud_info.msg
+rosidl_generate_interfaces(${PROJECT_NAME} 
+  "msg/CloudInfo.msg"
+  "srv/SaveMap.srv"
+  DEPENDENCIES std_msgs sensor_msgs
 )
-
-add_service_files(
-  DIRECTORY srv
-  FILES
-  save_map.srv
-)
-
-generate_messages(
-  DEPENDENCIES
-  geometry_msgs
-  std_msgs
-  nav_msgs
-  sensor_msgs
-)
-
-catkin_package(
-  INCLUDE_DIRS include
-  DEPENDS PCL GTSAM
-
-  CATKIN_DEPENDS
-  std_msgs
-  nav_msgs
-  geometry_msgs
-  sensor_msgs
-  message_runtime
-  message_generation
-  visualization_msgs
-)
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 
 # include directories
 include_directories(
   lib
 	include
-	${catkin_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 	${GTSAM_INCLUDE_DIR}
@@ -92,15 +69,49 @@ file(GLOB common_lib "lib/*.cpp")
 # <!-- liorf_yjz_lucky_boy -->
 # Range Image Projection
 add_executable(${PROJECT_NAME}_imageProjection src/imageProjection.cpp ${common_lib})
-add_dependencies(${PROJECT_NAME}_imageProjection ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
-target_link_libraries(${PROJECT_NAME}_imageProjection ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+ament_target_dependencies(${PROJECT_NAME}_imageProjection ${ros2_lib})
+target_link_libraries(${PROJECT_NAME}_imageProjection "${cpp_typesupport_target}" ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
 
-# Mapping Optimization
+# # Mapping Optimization
 add_executable(${PROJECT_NAME}_mapOptmization src/mapOptmization.cpp ${common_lib} include/Scancontext.cpp)
-add_dependencies(${PROJECT_NAME}_mapOptmization ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
 target_compile_options(${PROJECT_NAME}_mapOptmization PRIVATE ${OpenMP_CXX_FLAGS})
-target_link_libraries(${PROJECT_NAME}_mapOptmization Boost::timer ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} ${OpenMP_CXX_FLAGS} ${GeographicLib_LIBRARIES} gtsam)
+ament_target_dependencies(${PROJECT_NAME}_mapOptmization ${ros2_lib})
+target_link_libraries(${PROJECT_NAME}_mapOptmization Boost::timer "${cpp_typesupport_target}" ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} ${OpenMP_CXX_FLAGS} ${GeographicLib_LIBRARIES} gtsam)
 
-# IMU Preintegration
+# # IMU Preintegration
 add_executable(${PROJECT_NAME}_imuPreintegration src/imuPreintegration.cpp ${common_lib})
-target_link_libraries(${PROJECT_NAME}_imuPreintegration Boost::timer ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
+ament_target_dependencies(${PROJECT_NAME}_imuPreintegration ${ros2_lib})
+target_link_libraries(${PROJECT_NAME}_imuPreintegration Boost::timer "${cpp_typesupport_target}" ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
+
+install(
+  DIRECTORY launch config rviz
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(
+  TARGETS 
+	${PROJECT_NAME}_imageProjection
+	${PROJECT_NAME}_imuPreintegration
+	${PROJECT_NAME}_mapOptmization
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY "include/"
+  DESTINATION include
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_export_include_directories(include)
+
+ament_package()
